@@ -358,6 +358,10 @@ class CinderCephBasicDeployment(OpenStackAmuletDeployment):
             }
         }
 
+        if self._get_openstack_release() >= self.xenial_queens:
+            section = sub_dict['cinder']["/etc/cinder/cinder.conf"]["sections"]
+            section["cinder-ceph"].append(('rbd_exclusive_cinder_pool', True))
+
         expected = {
             'subordinate_configuration': json.dumps(sub_dict),
             'private-address': u.valid_ip,

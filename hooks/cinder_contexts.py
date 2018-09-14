@@ -50,19 +50,15 @@ class CephSubordinateContext(OSContextGenerator):
             volume_driver = 'cinder.volume.drivers.rbd.RBDDriver'
         else:
             volume_driver = 'cinder.volume.driver.RBDDriver'
-        return {
-            "cinder": {
-                "/etc/cinder/cinder.conf": {
-                    "sections": {
-                        service: [
-                            ('volume_backend_name', service),
-                            ('volume_driver', volume_driver),
-                            ('rbd_pool', service),
-                            ('rbd_user', service),
-                            ('rbd_secret_uuid', leader_get('secret-uuid')),
-                            ('rbd_ceph_conf', ceph_config_file()),
-                        ]
-                    }
-                }
-            }
-        }
+
+        section = {service: [('volume_backend_name', service),
+                             ('volume_driver', volume_driver),
+                             ('rbd_pool', service),
+                             ('rbd_user', service),
+                             ('rbd_secret_uuid', leader_get('secret-uuid')),
+                             ('rbd_ceph_conf', ceph_config_file())]}
+
+        if CompareOpenStackReleases(os_codename) >= "queens":
+            section[service].append(('rbd_exclusive_cinder_pool', True))
+
+        return {'cinder': {'/etc/cinder/cinder.conf': {'sections': section}}}
