@@ -59,6 +59,10 @@ from charmhelpers.payload.execd import execd_preinstall
 from charmhelpers.contrib.openstack.utils import (
     set_os_workload_status,
     os_application_version_set,
+    set_unit_paused,
+    set_unit_upgrading,
+    clear_unit_paused,
+    clear_unit_upgrading,
 )
 
 
@@ -217,6 +221,26 @@ def ceph_access_joined(relation_id=None):
         relation_settings={'key': ceph_keys.get('key'),
                            'secret-uuid': leader_get('secret-uuid')}
     )
+
+
+@hooks.hook('pre-series-upgrade')
+def pre_series_upgrade():
+    log("Running prepare series upgrade hook", "INFO")
+    # In order to indicate the step of the series upgrade process for
+    # administrators and automated scripts, the charm sets the paused and
+    # upgrading states.
+    set_unit_paused()
+    set_unit_upgrading()
+
+
+@hooks.hook('post-series-upgrade')
+def post_series_upgrade():
+    log("Running complete series upgrade hook", "INFO")
+    # In order to indicate the step of the series upgrade process for
+    # administrators and automated scripts, the charm clears the paused and
+    # upgrading states.
+    clear_unit_paused()
+    clear_unit_upgrading()
 
 
 if __name__ == '__main__':
