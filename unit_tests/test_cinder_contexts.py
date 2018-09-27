@@ -37,30 +37,6 @@ class TestCinderContext(CharmTestCase):
         self.is_relation_made.return_value = False
         self.assertEqual(contexts.CephSubordinateContext()(), {})
 
-    def test_ceph_related(self):
-        self.is_relation_made.return_value = True
-        self.get_os_codename_package.return_value = "havana"
-        service = 'mycinder'
-        self.service_name.return_value = service
-        self.assertEqual(
-            contexts.CephSubordinateContext()(),
-            {"cinder": {
-                "/etc/cinder/cinder.conf": {
-                    "sections": {
-                        service: [
-                            ('volume_backend_name', service),
-                            ('volume_driver',
-                             'cinder.volume.driver.RBDDriver'),
-                            ('rbd_pool', service),
-                            ('rbd_user', service),
-                            ('rbd_secret_uuid', 'libvirt-uuid'),
-                            ('rbd_ceph_conf',
-                             '/var/lib/charm/mycinder/ceph.conf')
-                        ]
-                    }
-                }
-            }})
-
     def test_ceph_related_icehouse(self):
         self.is_relation_made.return_value = True
         self.get_os_codename_package.return_value = "icehouse"
@@ -85,6 +61,31 @@ class TestCinderContext(CharmTestCase):
                 }
             }})
 
+    def test_ceph_related_mitaka(self):
+        self.is_relation_made.return_value = True
+        self.get_os_codename_package.return_value = "mitaka"
+        service = 'mycinder'
+        self.service_name.return_value = service
+        self.assertEqual(
+            contexts.CephSubordinateContext()(),
+            {"cinder": {
+                "/etc/cinder/cinder.conf": {
+                    "sections": {
+                        service: [
+                            ('volume_backend_name', service),
+                            ('volume_driver',
+                             'cinder.volume.drivers.rbd.RBDDriver'),
+                            ('rbd_pool', service),
+                            ('rbd_user', service),
+                            ('rbd_secret_uuid', 'libvirt-uuid'),
+                            ('rbd_ceph_conf',
+                             '/var/lib/charm/mycinder/ceph.conf'),
+                            ('report_discard_supported', True)
+                        ]
+                    }
+                }
+            }})
+
     def test_ceph_related_queens(self):
         self.is_relation_made.return_value = True
         self.get_os_codename_package.return_value = "queens"
@@ -104,6 +105,7 @@ class TestCinderContext(CharmTestCase):
                             ('rbd_secret_uuid', 'libvirt-uuid'),
                             ('rbd_ceph_conf',
                              '/var/lib/charm/mycinder/ceph.conf'),
+                            ('report_discard_supported', True),
                             ('rbd_exclusive_cinder_pool', True)
                         ]
                     }
