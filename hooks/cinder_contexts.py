@@ -58,6 +58,9 @@ class CephSubordinateContext(OSContextGenerator):
                              ('rbd_secret_uuid', leader_get('secret-uuid')),
                              ('rbd_ceph_conf', ceph_config_file())]}
 
+        if CompareOpenStackReleases(os_codename) >= "mitaka":
+            section[service].append(('report_discard_supported', True))
+
         if CompareOpenStackReleases(os_codename) >= "queens":
             section[service].append(('rbd_exclusive_cinder_pool', True))
 
