@@ -24,6 +24,7 @@ from tempfile import NamedTemporaryFile
 from charmhelpers.core.hookenv import (
     relation_ids,
     service_name,
+    hook_name,
 )
 
 from charmhelpers.contrib.openstack import (
@@ -78,7 +79,7 @@ def register_configs():
 
     confs = []
 
-    if relation_ids('ceph'):
+    if relation_ids('ceph') and hook_name() != 'ceph-relation-broken':
         # Add charm ceph configuration to resources and
         # ensure directory actually exists
         mkdir(os.path.dirname(ceph_config_file()))

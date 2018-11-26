@@ -13,6 +13,7 @@
 # limitations under the License.
 
 from mock import MagicMock, patch, call, ANY
+import os
 import json
 import cinder_utils as utils
 
@@ -35,6 +36,8 @@ TO_PATCH = [
     'is_request_complete',
     'send_request_if_needed',
     'CONFIGS',
+    'CEPH_CONF',
+    'ceph_config_file',
     # charmhelpers.core.hookenv
     'config',
     'relation_ids',
@@ -52,6 +55,7 @@ TO_PATCH = [
     'execd_preinstall',
     'CephSubordinateContext',
     'delete_keyring',
+    'remove_alternative',
     'status_set',
     'os_application_version_set',
 ]
@@ -168,6 +172,9 @@ class TestCinderHooks(CharmTestCase):
         hooks.hooks.execute(['hooks/ceph-relation-broken'])
         self.delete_keyring.assert_called_with(service='cinder-ceph')
         self.assertTrue(self.CONFIGS.write_all.called)
+        self.remove_alternative.assert_called_with(
+            os.path.basename(self.CEPH_CONF),
+            self.ceph_config_file())
 
     @patch('charmhelpers.core.hookenv.config')
     @patch.object(hooks, 'storage_backend')

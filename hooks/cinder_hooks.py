@@ -26,8 +26,12 @@ from cinder_utils import (
     PACKAGES,
     REQUIRED_INTERFACES,
     VERSION_PACKAGE,
+    CEPH_CONF,
 )
-from cinder_contexts import CephSubordinateContext
+from cinder_contexts import (
+    CephSubordinateContext,
+    ceph_config_file,
+)
 from charmhelpers.contrib.openstack.context import CephContext
 
 from charmhelpers.core.hookenv import (
@@ -48,6 +52,7 @@ from charmhelpers.core.host import (
     restart_on_change,
     service_restart,
 )
+from charmhelpers.contrib.openstack.alternatives import remove_alternative
 from charmhelpers.contrib.storage.linux.ceph import (
     send_request_if_needed,
     is_request_complete,
@@ -142,6 +147,7 @@ def ceph_broken():
     service = service_name()
     delete_keyring(service=service)
     CONFIGS.write_all()
+    remove_alternative(os.path.basename(CEPH_CONF), ceph_config_file())
 
 
 @hooks.hook('config-changed')
