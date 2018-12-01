@@ -726,3 +726,34 @@ class CinderCephBasicDeployment(OpenStackAmuletDeployment):
         ret = u.check_commands_on_units(commands, sentry_units)
         if ret:
             amulet.raise_status(amulet.FAIL, msg=ret)
+
+    def test_500_ceph_alternatives_cleanup(self):
+        """Check ceph alternatives are removed when ceph-mon
+        relation is broken"""
+        u.log.debug('Checking ceph alternatives are removed '
+                    'upon broken ceph-mon relation')
+        ceph_dir = self.cinder_ceph_sentry.directory_listing('/etc/ceph')
+        u.log.debug(ceph_dir)
+        if 'ceph.conf' in ceph_dir['files']:
+            u.log.debug('/etc/ceph/ceph.conf exists BEFORE relation-broken')
+        else:
+            error_msg = '/etc/ceph/ceph.conf does not '
+            error_msg += 'exist BEFORE relation-broken\n'
+            error_msg += 'test_500_ceph_alternatives_cleanup FAILED'
+            amulet.raise_status(amulet.FAIL, msg=error_msg)
+        self.d.unrelate('ceph-mon:client', 'cinder-ceph:ceph')
+        self.d.sentry.wait()
+        ceph_dir_after = self.cinder_ceph_sentry.directory_listing('/etc/ceph')
+        u.log.debug(ceph_dir_after)
+        if 'ceph.conf' in ceph_dir_after['files']:
+            u.log.debug('/etc/ceph/ceph.conf exists AFTER relation-broken')
+            error_msg = 'Did not expect /etc/ceph/ceph.conf AFTER '
+            error_msg += 'relation-broken\n'
+            error_msg += 'test_500_ceph_alternatives_cleanup FAILED'
+            amulet.raise_status(amulet.FAIL, msg=error_msg)
+        else:
+            u.log.debug('/etc/ceph/ceph.conf removed AFTER relation-broken')
+            u.log.debug('test_500_ceph_alternatives_cleanup PASSED - (OK)')
+        # Restore cinder-ceph and ceph-mon relation to keep tests idempotent
+        self.d.relate('ceph-mon:client', 'cinder-ceph:ceph')
+        self.d.sentry.wait()
