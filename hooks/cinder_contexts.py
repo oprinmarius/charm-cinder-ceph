@@ -13,6 +13,7 @@
 # limitations under the License.
 
 from charmhelpers.core.hookenv import (
+    config,
     service_name,
     is_relation_made,
     leader_get,
@@ -51,9 +52,13 @@ class CephSubordinateContext(OSContextGenerator):
         else:
             volume_driver = 'cinder.volume.driver.RBDDriver'
 
+        if config('rbd-pool-name'):
+            pool_name = config('rbd-pool-name')
+        else:
+            pool_name = service
         section = {service: [('volume_backend_name', service),
                              ('volume_driver', volume_driver),
-                             ('rbd_pool', service),
+                             ('rbd_pool', pool_name),
                              ('rbd_user', service),
                              ('rbd_secret_uuid', leader_get('secret-uuid')),
                              ('rbd_ceph_conf', ceph_config_file())]}
