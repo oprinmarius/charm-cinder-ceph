@@ -12,31 +12,22 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-from __future__ import print_function
-
 import os
 import re
-
 from collections import OrderedDict
 from tempfile import NamedTemporaryFile
 
-
+from charmhelpers.contrib.openstack import (
+    context,
+    templating,
+)
+from charmhelpers.contrib.openstack.alternatives import install_alternative
+from charmhelpers.contrib.openstack.utils import get_os_codename_package
 from charmhelpers.core.hookenv import (
+    hook_name,
     relation_ids,
     service_name,
-    hook_name,
 )
-
-from charmhelpers.contrib.openstack import (
-    templating,
-    context,
-)
-
-from charmhelpers.contrib.openstack.utils import (
-    get_os_codename_package,
-)
-
-from charmhelpers.contrib.openstack.alternatives import install_alternative
 from charmhelpers.core.host import mkdir
 
 
@@ -89,7 +80,7 @@ def register_configs():
         # lower priority that both of these but thats OK
         if not os.path.exists(ceph_config_file()):
             # touch file for pre-templated generation
-            open(ceph_config_file(), 'w').close()
+            open(ceph_config_file(), 'wt').close()
         install_alternative(os.path.basename(CEPH_CONF),
                             CEPH_CONF, ceph_config_file())
         CONFIG_FILES[ceph_config_file()] = {
@@ -113,7 +104,7 @@ def restart_map():
                     that should be restarted when file changes.
     '''
     _map = []
-    for f, ctxt in CONFIG_FILES.iteritems():
+    for f, ctxt in CONFIG_FILES.items():
         svcs = []
         for svc in ctxt['services']:
             svcs.append(svc)
@@ -130,11 +121,11 @@ def scrub_old_style_ceph():
     # NOTE: purge any CEPH_ARGS data from /etc/environment
     env_file = '/etc/environment'
     ceph_match = re.compile("^CEPH_ARGS.*").search
-    with open(env_file, 'r') as input_file:
-        with NamedTemporaryFile(mode='w',
+    with open(env_file, 'rt') as input_file:
+        with NamedTemporaryFile(mode='wt',
                                 delete=False,
                                 dir=os.path.dirname(env_file)) as outfile:
             for line in input_file:
                 if not ceph_match(line):
                     print(line, end='', file=outfile)
-            os.rename(outfile.name, input_file.name)
+    os.rename(outfile.name, input_file.name)

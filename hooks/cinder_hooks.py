@@ -1,4 +1,4 @@
-#!/usr/bin/python
+#!/usr/bin/env python3
 #
 # Copyright 2016 Canonical Ltd
 #
@@ -14,60 +14,72 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+import json
 import os
 import sys
-import json
 import uuid
 
-from cinder_utils import (
-    register_configs,
-    restart_map,
-    scrub_old_style_ceph,
-    PACKAGES,
-    REQUIRED_INTERFACES,
-    VERSION_PACKAGE,
-    CEPH_CONF,
-)
-from cinder_contexts import (
-    CephSubordinateContext,
-    ceph_config_file,
-)
-from charmhelpers.contrib.openstack.context import CephContext
 
+_path = os.path.dirname(os.path.realpath(__file__))
+_root = os.path.abspath(os.path.join(_path, '..'))
+
+
+def _add_path(path):
+    if path not in sys.path:
+        sys.path.insert(1, path)
+
+
+_add_path(_root)
+
+from charmhelpers.contrib.openstack.alternatives import remove_alternative
+from charmhelpers.contrib.openstack.context import CephContext
+from charmhelpers.contrib.openstack.utils import (
+    clear_unit_paused,
+    clear_unit_upgrading,
+    os_application_version_set,
+    set_os_workload_status,
+    set_unit_paused,
+    set_unit_upgrading,
+)
+from charmhelpers.contrib.storage.linux.ceph import (
+    CephBrokerRq,
+    delete_keyring,
+    ensure_ceph_keyring,
+    is_request_complete,
+    send_request_if_needed,
+)
 from charmhelpers.core.hookenv import (
-    Hooks,
-    UnregisteredHookError,
     config,
-    service_name,
-    relation_set,
-    relation_ids,
-    status_set,
-    log,
+    Hooks,
+    is_leader,
     leader_get,
     leader_set,
-    is_leader,
+    log,
+    relation_ids,
+    relation_set,
+    service_name,
+    status_set,
+    UnregisteredHookError,
 )
-from charmhelpers.fetch import apt_install, apt_update
 from charmhelpers.core.host import (
     restart_on_change,
     service_restart,
 )
-from charmhelpers.contrib.openstack.alternatives import remove_alternative
-from charmhelpers.contrib.storage.linux.ceph import (
-    send_request_if_needed,
-    is_request_complete,
-    ensure_ceph_keyring,
-    CephBrokerRq,
-    delete_keyring,
-)
+from charmhelpers.fetch import apt_install, apt_update
 from charmhelpers.payload.execd import execd_preinstall
-from charmhelpers.contrib.openstack.utils import (
-    set_os_workload_status,
-    os_application_version_set,
-    set_unit_paused,
-    set_unit_upgrading,
-    clear_unit_paused,
-    clear_unit_upgrading,
+
+from cinder_contexts import (
+    ceph_config_file,
+    CephSubordinateContext,
+)
+from cinder_utils import (
+    CEPH_CONF,
+    PACKAGES,
+    register_configs,
+    REQUIRED_INTERFACES,
+    restart_map,
+    scrub_old_style_ceph,
+    VERSION_PACKAGE,
 )
 
 

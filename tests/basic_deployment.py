@@ -730,6 +730,12 @@ class CinderCephBasicDeployment(OpenStackAmuletDeployment):
     def test_500_ceph_alternatives_cleanup(self):
         """Check ceph alternatives are removed when ceph-mon
         relation is broken"""
+        # Skip this test if release is less than xenial_ocata as in that case
+        # cinder HAS a relation with ceph directly and this test would fail
+        if self._get_openstack_release() < self.xenial_ocata:
+            u.log.debug("No checking 500 ceph alternatives as "
+                        "/etc/ceph/ceph.conf will exist.")
+            return
         u.log.debug('Checking ceph alternatives are removed '
                     'upon broken ceph-mon relation')
         ceph_dir = self.cinder_ceph_sentry.directory_listing('/etc/ceph')
