@@ -108,7 +108,8 @@ def get_ceph_request():
     rq = CephBrokerRq()
     replicas = config('ceph-osd-replication-count')
     weight = config('ceph-pool-weight')
-    rq.add_op_create_pool(name=service, replica_count=replicas,
+    pool_name = config('rbd-pool-name') or service
+    rq.add_op_create_pool(name=pool_name, replica_count=replicas,
                           weight=weight,
                           group="volumes")
     if config('restrict-ceph-pools'):

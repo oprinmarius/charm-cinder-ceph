@@ -151,6 +151,22 @@ class TestCinderHooks(CharmTestCase):
                 permission='rwx'),
         ])
 
+    @patch('charmhelpers.contrib.storage.linux.ceph.CephBrokerRq'
+           '.add_op_request_access_to_group')
+    @patch('charmhelpers.contrib.storage.linux.ceph.CephBrokerRq'
+           '.add_op_create_pool')
+    def test_create_pool_wth_name_op(self, mock_create_pool,
+                                     mock_request_access):
+        self.service_name.return_value = 'cinder'
+        self.test_config.set('ceph-osd-replication-count', 4)
+        self.test_config.set('ceph-pool-weight', 20)
+        self.test_config.set('rbd-pool-name', 'cinder-test')
+        hooks.get_ceph_request()
+        mock_create_pool.assert_called_with(name='cinder-test',
+                                            replica_count=4,
+                                            weight=20,
+                                            group='volumes')
+
     @patch('charmhelpers.core.hookenv.config')
     def test_ceph_changed_no_keys(self, mock_config):
         '''It ensures ceph assets created on ceph changed'''
