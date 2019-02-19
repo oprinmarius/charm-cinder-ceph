@@ -111,18 +111,18 @@ def get_ceph_request():
     pool_name = config('rbd-pool-name') or service
     rq.add_op_create_pool(name=pool_name, replica_count=replicas,
                           weight=weight,
-                          group="volumes")
+                          group='volumes', app_name='rbd')
     if config('restrict-ceph-pools'):
         rq.add_op_request_access_to_group(
-            name="volumes",
+            name='volumes',
             object_prefix_permissions={'class-read': ['rbd_children']},
             permission='rwx')
         rq.add_op_request_access_to_group(
-            name="images",
+            name='images',
             object_prefix_permissions={'class-read': ['rbd_children']},
             permission='rwx')
         rq.add_op_request_access_to_group(
-            name="vms",
+            name='vms',
             object_prefix_permissions={'class-read': ['rbd_children']},
             permission='rwx')
     return rq

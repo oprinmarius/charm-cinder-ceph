@@ -129,13 +129,15 @@ class TestCinderHooks(CharmTestCase):
         self.test_config.set('ceph-pool-weight', 20)
         hooks.get_ceph_request()
         mock_create_pool.assert_called_with(name='cinder', replica_count=4,
-                                            weight=20, group='volumes')
+                                            weight=20, group='volumes',
+                                            app_name='rbd')
         mock_request_access.assert_not_called()
 
         self.test_config.set('restrict-ceph-pools', True)
         hooks.get_ceph_request()
         mock_create_pool.assert_called_with(name='cinder', replica_count=4,
-                                            weight=20, group='volumes')
+                                            weight=20, group='volumes',
+                                            app_name='rbd')
         mock_request_access.assert_has_calls([
             call(
                 name='volumes',
@@ -165,7 +167,8 @@ class TestCinderHooks(CharmTestCase):
         mock_create_pool.assert_called_with(name='cinder-test',
                                             replica_count=4,
                                             weight=20,
-                                            group='volumes')
+                                            group='volumes',
+                                            app_name='rbd')
 
     @patch('charmhelpers.core.hookenv.config')
     def test_ceph_changed_no_keys(self, mock_config):
