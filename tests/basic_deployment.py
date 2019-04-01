@@ -358,12 +358,11 @@ class CinderCephBasicDeployment(OpenStackAmuletDeployment):
             }
         }
 
+        section = sub_dict['cinder']["/etc/cinder/cinder.conf"]["sections"]
         if self._get_openstack_release() >= self.trusty_mitaka:
-            section = sub_dict['cinder']["/etc/cinder/cinder.conf"]["sections"]
             section["cinder-ceph"].append(('report_discard_supported', True))
 
-        if self._get_openstack_release() >= self.xenial_queens:
-            section = sub_dict['cinder']["/etc/cinder/cinder.conf"]["sections"]
+        if self._get_openstack_release() >= self.xenial_ocata:
             section["cinder-ceph"].append(('rbd_exclusive_cinder_pool', True))
 
         expected = {
