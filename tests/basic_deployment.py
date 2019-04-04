@@ -531,13 +531,13 @@ class CinderCephBasicDeployment(OpenStackAmuletDeployment):
             'rabbit_password': rel_mq_ci['password'],
             'rabbit_host': rel_mq_ci['hostname'],
         }
-
-        if self._get_openstack_release() >= self.trusty_kilo:
-            # Kilo or later
-            expected['oslo_messaging_rabbit'] = expected_rmq
-        else:
-            # Juno or earlier
-            expected['DEFAULT'].update(expected_rmq)
+        if self._get_openstack_release() < self.xenial_ocata:
+            if self._get_openstack_release() >= self.trusty_kilo:
+                # Kilo or later
+                expected['oslo_messaging_rabbit'] = expected_rmq
+            else:
+                # Juno or earlier
+                expected['DEFAULT'].update(expected_rmq)
 
         for section, pairs in expected.iteritems():
             ret = u.validate_config_data(unit, conf, section, pairs)
