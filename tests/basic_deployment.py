@@ -365,6 +365,8 @@ class CinderCephBasicDeployment(OpenStackAmuletDeployment):
         if self._get_openstack_release() >= self.xenial_queens:
             section = sub_dict['cinder']["/etc/cinder/cinder.conf"]["sections"]
             section["cinder-ceph"].append(('rbd_exclusive_cinder_pool', True))
+            section["cinder-ceph"].append(
+                ('rbd_flatten_volume_from_snapshot', False))
 
         expected = {
             'subordinate_configuration': json.dumps(sub_dict),

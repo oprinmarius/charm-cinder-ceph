@@ -68,5 +68,8 @@ class CephSubordinateContext(OSContextGenerator):
 
         if CompareOpenStackReleases(os_codename) >= "queens":
             section[service].append(('rbd_exclusive_cinder_pool', True))
+            section[service].append(
+                ('rbd_flatten_volume_from_snapshot',
+                 config('rbd-flatten-volume-from-snapshot')))
 
         return {'cinder': {'/etc/cinder/cinder.conf': {'sections': section}}}

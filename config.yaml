@@ -39,3 +39,10 @@ options:
     type: string
     description: |
       Optionally specify an existing rbd pool that cinder should map to.
+  rbd-flatten-volume-from-snapshot:
+    default:
+    type: boolean
+    default: False
+    description: |
+      Flatten volumes created from snapshots to remove dependency from
+      volume to snapshot. Supported on Queens+
