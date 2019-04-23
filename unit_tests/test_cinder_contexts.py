@@ -108,7 +108,8 @@ class TestCinderContext(CharmTestCase):
                             ('rbd_ceph_conf',
                              '/var/lib/charm/mycinder/ceph.conf'),
                             ('report_discard_supported', True),
-                            ('rbd_exclusive_cinder_pool', True)
+                            ('rbd_exclusive_cinder_pool', True),
+                            ('rbd_flatten_volume_from_snapshot', False)
                         ]
                     }
                 }
