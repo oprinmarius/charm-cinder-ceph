@@ -66,7 +66,7 @@ class CephSubordinateContext(OSContextGenerator):
         if CompareOpenStackReleases(os_codename) >= "mitaka":
             section[service].append(('report_discard_supported', True))
 
-        if CompareOpenStackReleases(os_codename) >= "queens":
+        if CompareOpenStackReleases(os_codename) >= "ocata":
             section[service].append(('rbd_exclusive_cinder_pool', True))
             section[service].append(
                 ('rbd_flatten_volume_from_snapshot',
