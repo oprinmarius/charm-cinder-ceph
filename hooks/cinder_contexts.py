@@ -68,6 +68,8 @@ class CephSubordinateContext(OSContextGenerator):
 
         if CompareOpenStackReleases(os_codename) >= "ocata":
             section[service].append(('rbd_exclusive_cinder_pool', True))
+
+        if CompareOpenStackReleases(os_codename) >= "queens":
             section[service].append(
                 ('rbd_flatten_volume_from_snapshot',
                  config('rbd-flatten-volume-from-snapshot')))
