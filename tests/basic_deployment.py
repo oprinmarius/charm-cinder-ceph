@@ -65,7 +65,7 @@ class CinderCephBasicDeployment(OpenStackAmuletDeployment):
         # Note: cinder-ceph becomes a cinder subordinate unit.
         this_service = {'name': 'cinder-ceph'}
         other_services = [
-            {'name': 'percona-cluster'},
+            self.get_percona_service_entry(),
             {'name': 'keystone'},
             {'name': 'rabbitmq-server'},
             {'name': 'ceph-mon', 'units': 3},
