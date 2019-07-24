@@ -262,6 +262,12 @@ def post_series_upgrade():
     clear_unit_upgrading()
 
 
+@hooks.hook('update-status')
+def dummy_update_status():
+    """Dummy function to silence missing hook log entry"""
+    pass
+
+
 if __name__ == '__main__':
     try:
         hooks.execute(sys.argv)
