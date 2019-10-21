@@ -113,8 +113,10 @@ class CinderCephBasicDeployment(OpenStackAmuletDeployment):
 
         ceph_config = {
             'monitor-count': '3',
-            'auth-supported': 'none',
         }
+        if self._get_openstack_release() < self.bionic_train:
+            ceph_config['auth-supported'] = 'none'
+
         cinder_ceph_config = {
             'ceph-osd-replication-count': '3',
         }
@@ -327,6 +329,9 @@ class CinderCephBasicDeployment(OpenStackAmuletDeployment):
             'ceph-public-address': u.valid_ip,
             'auth': 'none',
         }
+        if self._get_openstack_release() >= self.bionic_train:
+            expected['auth'] = 'cephx'
+
         ret = u.validate_relation_data(ceph_unit, relation, expected)
         if ret:
             msg = u.relation_error('cinder cinder-ceph storage-backend', ret)
@@ -563,6 +568,9 @@ class CinderCephBasicDeployment(OpenStackAmuletDeployment):
                 # 'log to syslog': 'false'
             }
         }
+        if self._get_openstack_release() >= self.bionic_train:
+            expected['global']['auth_supported'] = 'cephx'
+
         for section, pairs in expected.iteritems():
             ret = u.validate_config_data(unit, conf, section, pairs)
             if ret:
@@ -714,11 +722,12 @@ class CinderCephBasicDeployment(OpenStackAmuletDeployment):
         all ceph units, and the cinder-ceph unit."""
         u.log.debug('Checking exit values are 0 on ceph commands')
         sentry_units = [
-            self.cinder_ceph_sentry,
             self.ceph0_sentry,
             self.ceph1_sentry,
             self.ceph2_sentry
         ]
+        if self._get_openstack_release() < self.bionic_train:
+            sentry_units.append(self.cinder_ceph_sentry)
         commands = [
             'sudo ceph health',
             'sudo ceph mds stat',
