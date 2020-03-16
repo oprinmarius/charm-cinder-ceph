@@ -437,7 +437,6 @@ class CinderCephBasicDeployment(OpenStackAmuletDeployment):
         expected = {
             'service_protocol': 'http',
             'service_tenant': 'services',
-            'admin_token': 'ubuntutesting',
             'service_password': u.not_null,
             'service_port': '5000',
             'auth_port': '35357',
