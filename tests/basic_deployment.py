@@ -100,7 +100,6 @@ class CinderCephBasicDeployment(OpenStackAmuletDeployment):
         """Configure all of the services."""
         keystone_config = {
             'admin-password': 'openstack',
-            'admin-token': 'ubuntutesting'
         }
         pxc_config = {
             'innodb-buffer-pool-size': '256M',
