@@ -5,6 +5,8 @@ comment: |
 smoke_bundles:
   - bionic-train
 gate_bundles:
+  - focal-ussuri
+  - bionic-ussuri
   - bionic-train
   - bionic-stein
   - bionic-rocky
