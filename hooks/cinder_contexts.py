@@ -17,6 +17,8 @@ from charmhelpers.core.hookenv import (
     service_name,
     is_relation_made,
     leader_get,
+    relation_ids,
+    related_units,
 )
 
 from charmhelpers.contrib.openstack.context import (
@@ -33,6 +35,17 @@ CHARM_CEPH_CONF = '/var/lib/charm/{}/ceph.conf'
 
 def ceph_config_file():
     return CHARM_CEPH_CONF.format(service_name())
+
+
+class CephAccessContext(OSContextGenerator):
+    interfaces = ['ceph-access']
+
+    def __call__(self):
+        """Simple check to validate that compute units are present"""
+        for r_id in relation_ids(self.interfaces[0]):
+            if related_units(r_id):
+                return {'complete': True}
+        return {}
 
 
 class CephSubordinateContext(OSContextGenerator):

@@ -30,6 +30,8 @@ from charmhelpers.core.hookenv import (
 )
 from charmhelpers.core.host import mkdir
 
+import cinder_contexts
+
 
 PACKAGES = [
     'ceph-common',
@@ -39,6 +41,7 @@ VERSION_PACKAGE = 'cinder-common'
 
 REQUIRED_INTERFACES = {
     'ceph': ['ceph'],
+    'nova-compute': ['ceph-access'],
 }
 
 CHARM_CEPH_CONF = '/var/lib/charm/{}/ceph.conf'
@@ -84,7 +87,8 @@ def register_configs():
         install_alternative(os.path.basename(CEPH_CONF),
                             CEPH_CONF, ceph_config_file())
         CONFIG_FILES[ceph_config_file()] = {
-            'hook_contexts': [context.CephContext()],
+            'hook_contexts': [context.CephContext(),
+                              cinder_contexts.CephAccessContext()],
             'services': ['cinder-volume'],
         }
         confs.append(ceph_config_file())

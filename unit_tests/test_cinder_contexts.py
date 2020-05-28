@@ -24,6 +24,8 @@ TO_PATCH = [
     'service_name',
     'get_os_codename_package',
     'leader_get',
+    'relation_ids',
+    'related_units',
 ]
 
 
@@ -140,3 +142,19 @@ class TestCinderContext(CharmTestCase):
                     }
                 }
             }})
+
+    def test_ceph_access_incomplete(self):
+        self.relation_ids.return_value = ['ceph-access:1']
+        self.related_units.return_value = []
+        self.assertEqual(
+            contexts.CephAccessContext()(),
+            {}
+        )
+
+    def test_ceph_access_complete(self):
+        self.relation_ids.return_value = ['ceph-access:1']
+        self.related_units.return_value = ['nova-compute/0', 'nova-compute/1']
+        self.assertEqual(
+            contexts.CephAccessContext()(),
+            {'complete': True}
+        )
