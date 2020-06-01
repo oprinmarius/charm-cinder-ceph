@@ -117,6 +117,34 @@ class TestCinderContext(CharmTestCase):
                 }
             }})
 
+    def test_ceph_related_erasure_coded(self):
+        self.is_relation_made.return_value = True
+        self.get_os_codename_package.return_value = "queens"
+        self.test_config.set('pool-type', 'erasure-coded')
+        service = 'mycinder'
+        self.service_name.return_value = service
+        self.assertEqual(
+            contexts.CephSubordinateContext()(),
+            {"cinder": {
+                "/etc/cinder/cinder.conf": {
+                    "sections": {
+                        service: [
+                            ('volume_backend_name', service),
+                            ('volume_driver',
+                             'cinder.volume.drivers.rbd.RBDDriver'),
+                            ('rbd_pool', "{}-metadata".format(service)),
+                            ('rbd_user', service),
+                            ('rbd_secret_uuid', 'libvirt-uuid'),
+                            ('rbd_ceph_conf',
+                             '/var/lib/charm/mycinder/ceph.conf'),
+                            ('report_discard_supported', True),
+                            ('rbd_exclusive_cinder_pool', True),
+                            ('rbd_flatten_volume_from_snapshot', False)
+                        ]
+                    }
+                }
+            }})
+
     def test_ceph_explicit_pool_name(self):
         self.test_config.set('rbd-pool-name', 'special_pool')
         self.is_relation_made.return_value = True
@@ -133,6 +161,33 @@ class TestCinderContext(CharmTestCase):
                             ('volume_driver',
                              'cinder.volume.drivers.rbd.RBDDriver'),
                             ('rbd_pool', 'special_pool'),
+                            ('rbd_user', service),
+                            ('rbd_secret_uuid', 'libvirt-uuid'),
+                            ('rbd_ceph_conf',
+                             '/var/lib/charm/mycinder/ceph.conf'),
+                            ('report_discard_supported', True)
+                        ]
+                    }
+                }
+            }})
+
+    def test_ceph_explicit_pool_name_ec(self):
+        self.test_config.set('rbd-pool-name', 'special_pool')
+        self.test_config.set('pool-type', 'erasure-coded')
+        self.is_relation_made.return_value = True
+        self.get_os_codename_package.return_value = "mitaka"
+        service = 'mycinder'
+        self.service_name.return_value = service
+        self.assertEqual(
+            contexts.CephSubordinateContext()(),
+            {"cinder": {
+                "/etc/cinder/cinder.conf": {
+                    "sections": {
+                        service: [
+                            ('volume_backend_name', service),
+                            ('volume_driver',
+                             'cinder.volume.drivers.rbd.RBDDriver'),
+                            ('rbd_pool', 'special_pool-metadata'),
                             ('rbd_user', service),
                             ('rbd_secret_uuid', 'libvirt-uuid'),
                             ('rbd_ceph_conf',

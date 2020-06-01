@@ -8,3 +8,4 @@ tags
 .idea
 .stestr
 func-results.json
+**/__pycache__

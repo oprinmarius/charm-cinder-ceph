@@ -90,8 +90,9 @@ class TestCinderHooks(CharmTestCase):
         m = 'ceph relation incomplete. Peer not ready?'
         self.log.assert_called_with(m)
 
+    @patch.object(hooks, 'get_ceph_request')
     @patch('charmhelpers.core.hookenv.config')
-    def test_ceph_changed(self, mock_config):
+    def test_ceph_changed(self, mock_config, mock_get_ceph_request):
         '''It ensures ceph assets created on ceph changed'''
         self.is_request_complete.return_value = True
         self.CONFIGS.complete_contexts.return_value = ['ceph']
@@ -170,6 +171,52 @@ class TestCinderHooks(CharmTestCase):
                                             group='volumes',
                                             app_name='rbd')
 
+    @patch('charmhelpers.contrib.storage.linux.ceph.CephBrokerRq'
+           '.add_op_create_erasure_pool')
+    @patch('charmhelpers.contrib.storage.linux.ceph.CephBrokerRq'
+           '.add_op_create_erasure_profile')
+    @patch('charmhelpers.contrib.storage.linux.ceph.CephBrokerRq'
+           '.add_op_request_access_to_group')
+    @patch('charmhelpers.contrib.storage.linux.ceph.CephBrokerRq'
+           '.add_op_create_pool')
+    def test_create_pool_erasure_coded(self, mock_create_pool,
+                                       mock_request_access,
+                                       mock_create_erasure_profile,
+                                       mock_create_erasure_pool):
+        self.service_name.return_value = 'cinder'
+        self.test_config.set('ceph-osd-replication-count', 4)
+        self.test_config.set('ceph-pool-weight', 20)
+        self.test_config.set('pool-type', 'erasure-coded')
+        self.test_config.set('ec-profile-plugin', 'isa')
+        hooks.get_ceph_request()
+        mock_create_pool.assert_called_with(
+            name='cinder-metadata',
+            replica_count=4,
+            weight=0.2,
+            group='volumes',
+            app_name='rbd'
+        )
+        mock_create_erasure_pool.assert_called_with(
+            name='cinder',
+            erasure_profile='cinder-profile',
+            weight=19.8,
+            group='volumes',
+            app_name='rbd',
+            allow_ec_overwrites=True
+        )
+        mock_create_erasure_profile.assert_called_with(
+            name='cinder-profile',
+            k=1, m=2,
+            lrc_locality=None,
+            lrc_crush_locality=None,
+            shec_durability_estimator=None,
+            clay_helper_chunks=None,
+            clay_scalar_mds=None,
+            device_class=None,
+            erasure_type='isa',
+            erasure_technique=None
+        )
+
     @patch('charmhelpers.core.hookenv.config')
     def test_ceph_changed_no_keys(self, mock_config):
         '''It ensures ceph assets created on ceph changed'''
@@ -183,8 +230,9 @@ class TestCinderHooks(CharmTestCase):
         self.assertTrue(self.log.called)
         self.assertFalse(self.CONFIGS.write_all.called)
 
+    @patch.object(hooks, 'get_ceph_request')
     @patch('charmhelpers.core.hookenv.config')
-    def test_ceph_broken(self, mock_config):
+    def test_ceph_broken(self, mock_config, mock_get_ceph_request):
         self.CONFIGS.complete_contexts.return_value = ['ceph']
         self.service_name.return_value = 'cinder-ceph'
         with patch.object(hooks, 'CEPH_CONF', new="/some/random/file"):
