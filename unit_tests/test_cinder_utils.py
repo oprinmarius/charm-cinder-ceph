@@ -12,7 +12,7 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-from mock import patch, call
+from unittest.mock import patch, call
 import os
 import cinder_utils as cinder_utils
 
