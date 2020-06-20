@@ -24,6 +24,13 @@ options:
       created for the pool. The number of placement groups for a pool can
       only be increased, never decreased - so it is important to identify the
       percent of data that will likely reside in the pool.
+  backend-availability-zone:
+    default:
+    type: string
+    description: |
+      Availability zone name of this volume backend. If set, it will
+      override the default availability zone. Supported for Pike or
+      newer releases.
   use-syslog:
     type: boolean
     default: False

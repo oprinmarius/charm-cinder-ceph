@@ -143,6 +143,34 @@ class TestCinderContext(CharmTestCase):
                 }
             }})
 
+    def test_ceph_explicit_backend_availability_zone(self):
+        self.test_config.set('backend-availability-zone', 'special_az')
+        self.is_relation_made.return_value = True
+        self.get_os_codename_package.return_value = "pike"
+        service = 'mycinder'
+        self.service_name.return_value = service
+        self.assertEqual(
+            contexts.CephSubordinateContext()(),
+            {"cinder": {
+                "/etc/cinder/cinder.conf": {
+                    "sections": {
+                        service: [
+                            ('volume_backend_name', service),
+                            ('volume_driver',
+                             'cinder.volume.drivers.rbd.RBDDriver'),
+                            ('rbd_pool', service),
+                            ('rbd_user', service),
+                            ('rbd_secret_uuid', 'libvirt-uuid'),
+                            ('rbd_ceph_conf',
+                             '/var/lib/charm/mycinder/ceph.conf'),
+                            ('report_discard_supported', True),
+                            ('rbd_exclusive_cinder_pool', True),
+                            ('backend_availability_zone', 'special_az')
+                        ]
+                    }
+                }
+            }})
+
     def test_ceph_access_incomplete(self):
         self.relation_ids.return_value = ['ceph-access:1']
         self.related_units.return_value = []
