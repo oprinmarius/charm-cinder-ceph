@@ -17,6 +17,8 @@ gate_bundles:
   - xenial-mitaka
   - trusty-mitaka
 dev_bundles:
+  - groovy-victoria
+  - focal-victoria
 configure:
   - zaza.openstack.charm_tests.glance.setup.add_cirros_image
   - zaza.openstack.charm_tests.glance.setup.add_lts_image
@@ -38,3 +40,5 @@ tests:
 tests_options:
   policyd:
     service: cinder
+  force_deploy:
+    - groovy-victoria
