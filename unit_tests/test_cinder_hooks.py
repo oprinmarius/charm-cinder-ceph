@@ -94,6 +94,13 @@ class TestCinderHooks(CharmTestCase):
     @patch('charmhelpers.core.hookenv.config')
     def test_ceph_changed(self, mock_config, mock_get_ceph_request):
         '''It ensures ceph assets created on ceph changed'''
+        # confirm ValueError is caught and logged
+        self.is_request_complete.side_effect = ValueError
+        hooks.hooks.execute(['hooks/ceph-relation-changed'])
+        self.assertFalse(self.CONFIGS.write_all.called)
+        self.assertTrue(self.log.called)
+        self.is_request_complete.side_effect = None
+        # normal operation
         self.is_request_complete.return_value = True
         self.CONFIGS.complete_contexts.return_value = ['ceph']
         self.service_name.return_value = 'cinder'
@@ -119,12 +126,13 @@ class TestCinderHooks(CharmTestCase):
                                                     group='cinder')
         self.send_request_if_needed.assert_called_with('cephreq')
 
+    @patch.object(hooks, 'CephBlueStoreCompressionContext')
     @patch('charmhelpers.contrib.storage.linux.ceph.CephBrokerRq'
            '.add_op_request_access_to_group')
     @patch('charmhelpers.contrib.storage.linux.ceph.CephBrokerRq'
-           '.add_op_create_pool')
+           '.add_op_create_replicated_pool')
     def test_create_pool_op(self, mock_create_pool,
-                            mock_request_access):
+                            mock_request_access, mock_bluestore_compression):
         self.service_name.return_value = 'cinder'
         self.test_config.set('ceph-osd-replication-count', 4)
         self.test_config.set('ceph-pool-weight', 20)
@@ -154,12 +162,14 @@ class TestCinderHooks(CharmTestCase):
                 permission='rwx'),
         ])
 
+    @patch.object(hooks, 'CephBlueStoreCompressionContext')
     @patch('charmhelpers.contrib.storage.linux.ceph.CephBrokerRq'
            '.add_op_request_access_to_group')
     @patch('charmhelpers.contrib.storage.linux.ceph.CephBrokerRq'
-           '.add_op_create_pool')
+           '.add_op_create_replicated_pool')
     def test_create_pool_wth_name_op(self, mock_create_pool,
-                                     mock_request_access):
+                                     mock_request_access,
+                                     mock_bluestore_compression):
         self.service_name.return_value = 'cinder'
         self.test_config.set('ceph-osd-replication-count', 4)
         self.test_config.set('ceph-pool-weight', 20)
@@ -170,7 +180,20 @@ class TestCinderHooks(CharmTestCase):
                                             weight=20,
                                             group='volumes',
                                             app_name='rbd')
+        # confirm operation with bluestore compression
+        mock_create_pool.reset_mock()
+        mock_bluestore_compression().get_kwargs.return_value = {
+            'compression_mode': 'fake',
+        }
+        hooks.get_ceph_request()
+        mock_create_pool.assert_called_once_with(name='cinder-test',
+                                                 replica_count=4,
+                                                 weight=20,
+                                                 group='volumes',
+                                                 app_name='rbd',
+                                                 compression_mode='fake')
 
+    @patch.object(hooks, 'CephBlueStoreCompressionContext')
     @patch('charmhelpers.contrib.storage.linux.ceph.CephBrokerRq'
            '.add_op_create_erasure_pool')
     @patch('charmhelpers.contrib.storage.linux.ceph.CephBrokerRq'
@@ -182,7 +205,8 @@ class TestCinderHooks(CharmTestCase):
     def test_create_pool_erasure_coded(self, mock_create_pool,
                                        mock_request_access,
                                        mock_create_erasure_profile,
-                                       mock_create_erasure_pool):
+                                       mock_create_erasure_pool,
+                                       mock_bluestore_compression):
         self.service_name.return_value = 'cinder'
         self.test_config.set('ceph-osd-replication-count', 4)
         self.test_config.set('ceph-pool-weight', 20)
@@ -215,6 +239,21 @@ class TestCinderHooks(CharmTestCase):
             device_class=None,
             erasure_type='isa',
             erasure_technique=None
+        )
+        # confirm operation with bluestore compression
+        mock_create_erasure_pool.reset_mock()
+        mock_bluestore_compression().get_kwargs.return_value = {
+            'compression_mode': 'fake',
+        }
+        hooks.get_ceph_request()
+        mock_create_erasure_pool.assert_called_with(
+            name='cinder',
+            erasure_profile='cinder-profile',
+            weight=19.8,
+            group='volumes',
+            app_name='rbd',
+            allow_ec_overwrites=True,
+            compression_mode='fake',
         )
 
     @patch('charmhelpers.core.hookenv.config')
@@ -348,3 +387,38 @@ class TestCinderHooks(CharmTestCase):
             relation_settings={'key': 'mykey',
                                'secret-uuid': 'newuuid'}
         )
+
+    @patch.object(hooks, 'ceph_changed')
+    @patch.object(hooks.uuid, 'uuid4')
+    def test_write_and_restart(self, mock_uuid4, mock_ceph_changed):
+        # confirm normal operation for any unit type
+        mock_ceph_changed.side_effect = None
+        hooks.write_and_restart()
+        self.CONFIGS.write_all.assert_called_once_with()
+        # confirm normal operation for leader
+        self.leader_get.reset_mock()
+        self.leader_get.return_value = None
+        self.is_leader.return_value = True
+        mock_uuid4.return_value = 42
+        hooks.write_and_restart()
+        self.leader_get.assert_called_once_with('secret-uuid')
+        self.leader_set.assert_called_once_with({'secret-uuid': '42'})
+
+    @patch.object(hooks, 'CephBlueStoreCompressionContext')
+    @patch.object(hooks, 'set_os_workload_status')
+    def test_assess_status(self,
+                           mock_set_os_workload_status,
+                           mock_bluestore_compression):
+        hooks.assess_status()
+        self.os_application_version_set.assert_called_once_with(
+            hooks.VERSION_PACKAGE)
+        mock_set_os_workload_status.assert_called_once_with(
+            ANY, hooks.REQUIRED_INTERFACES)
+        mock_bluestore_compression().validate.assert_called_once_with()
+        self.assertFalse(self.status_set.called)
+        # confirm operation when user have provided invalid configuration
+        mock_bluestore_compression().validate.side_effect = ValueError(
+            'fake message')
+        hooks.assess_status()
+        self.status_set.assert_called_once_with(
+            'blocked', 'Invalid configuration: fake message')

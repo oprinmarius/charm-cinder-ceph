@@ -32,7 +32,10 @@ def _add_path(path):
 _add_path(_root)
 
 from charmhelpers.contrib.openstack.alternatives import remove_alternative
-from charmhelpers.contrib.openstack.context import CephContext
+from charmhelpers.contrib.openstack.context import (
+    CephBlueStoreCompressionContext,
+    CephContext,
+)
 from charmhelpers.contrib.openstack.utils import (
     clear_unit_paused,
     clear_unit_upgrading,
@@ -49,6 +52,7 @@ from charmhelpers.contrib.storage.linux.ceph import (
     send_request_if_needed,
 )
 from charmhelpers.core.hookenv import (
+    DEBUG,
     config,
     Hooks,
     is_leader,
@@ -109,6 +113,7 @@ def get_ceph_request():
     pool_name = config('rbd-pool-name') or service
     weight = config('ceph-pool-weight')
     replicas = config('ceph-osd-replication-count')
+    bluestore_compression = CephBlueStoreCompressionContext()
 
     if config('pool-type') == 'erasure-coded':
         # General EC plugin config
@@ -160,20 +165,35 @@ def get_ceph_request():
         )
 
         # Create EC data pool
-        rq.add_op_create_erasure_pool(
-            name=pool_name,
-            erasure_profile=profile_name,
-            weight=weight,
-            group="volumes",
-            app_name="rbd",
-            allow_ec_overwrites=True
-        )
-    else:
-        rq.add_op_create_pool(name=pool_name,
-                              replica_count=replicas,
-                              weight=weight,
-                              group='volumes', app_name='rbd')
 
+        # NOTE(fnordahl): once we deprecate Python 3.5 support we can do
+        # the unpacking of the BlueStore compression arguments as part of
+        # the function arguments. Until then we need to build the dict
+        # prior to the function call.
+        kwargs = {
+            'name': pool_name,
+            'erasure_profile': profile_name,
+            'weight': weight,
+            'group': "volumes",
+            'app_name': "rbd",
+            'allow_ec_overwrites': True,
+        }
+        kwargs.update(bluestore_compression.get_kwargs())
+        rq.add_op_create_erasure_pool(**kwargs)
+    else:
+        # NOTE(fnordahl): once we deprecate Python 3.5 support we can do
+        # the unpacking of the BlueStore compression arguments as part of
+        # the function arguments. Until then we need to build the dict
+        # prior to the function call.
+        kwargs = {
+            'name': pool_name,
+            'replica_count': replicas,
+            'weight': weight,
+            'group': 'volumes',
+            'app_name': 'rbd',
+        }
+        kwargs.update(bluestore_compression.get_kwargs())
+        rq.add_op_create_replicated_pool(**kwargs)
     if config('restrict-ceph-pools'):
         rq.add_op_request_access_to_group(
             name='volumes',
@@ -203,18 +223,27 @@ def ceph_changed():
         log('Could not create ceph keyring: peer not ready?')
         return
 
-    if is_request_complete(get_ceph_request()):
-        log('Request complete')
-        CONFIGS.write_all()
-        for rid in relation_ids('storage-backend'):
-            storage_backend(rid)
-        for r_id in relation_ids('ceph-access'):
-            ceph_access_joined(r_id)
-        # Ensure that cinder-volume is restarted since only now can we
-        # guarantee that ceph resources are ready.
-        service_restart('cinder-volume')
-    else:
-        send_request_if_needed(get_ceph_request())
+    try:
+        if is_request_complete(get_ceph_request()):
+            log('Request complete')
+            CONFIGS.write_all()
+            for rid in relation_ids('storage-backend'):
+                storage_backend(rid)
+            for r_id in relation_ids('ceph-access'):
+                ceph_access_joined(r_id)
+            # Ensure that cinder-volume is restarted since only now can we
+            # guarantee that ceph resources are ready.
+            service_restart('cinder-volume')
+        else:
+            send_request_if_needed(get_ceph_request())
+    except ValueError as e:
+        # The end user has most likely provided a invalid value for a
+        # configuration option. Just log the traceback here, the end user will
+        # be notified by assess_status() called at the end of the hook
+        # execution.
+        log('Caught ValueError, invalid value provided for configuration?: '
+            '"{}"'.format(str(e)),
+            level=DEBUG)
 
 
 @hooks.hook('ceph-relation-broken')
@@ -330,10 +359,21 @@ def dummy_update_status():
     pass
 
 
+def assess_status():
+    """Assess status of current unit."""
+    os_application_version_set(VERSION_PACKAGE)
+    set_os_workload_status(CONFIGS, REQUIRED_INTERFACES)
+
+    try:
+        bluestore_compression = CephBlueStoreCompressionContext()
+        bluestore_compression.validate()
+    except ValueError as e:
+        status_set('blocked', 'Invalid configuration: {}'.format(str(e)))
+
+
 if __name__ == '__main__':
     try:
         hooks.execute(sys.argv)
     except UnregisteredHookError as e:
         log('Unknown hook {} - skipping.'.format(e))
-    set_os_workload_status(CONFIGS, REQUIRED_INTERFACES)
-    os_application_version_set(VERSION_PACKAGE)
+    assess_status()
