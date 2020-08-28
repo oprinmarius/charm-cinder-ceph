@@ -5,6 +5,8 @@ comment: |
 smoke_bundles:
   - bionic-train
 gate_bundles:
+  - focal-victoria-ec
+  - focal-victoria
   - focal-ussuri-ec
   - focal-ussuri
   - bionic-ussuri
@@ -18,8 +20,8 @@ gate_bundles:
   - xenial-mitaka
   - trusty-mitaka
 dev_bundles:
+  - groovy-victoria-ec
   - groovy-victoria
-  - focal-victoria
 configure:
   - zaza.openstack.charm_tests.glance.setup.add_cirros_image
   - zaza.openstack.charm_tests.glance.setup.add_lts_image
@@ -43,4 +45,5 @@ tests_options:
   policyd:
     service: cinder
   force_deploy:
+    - groovy-victoria-ec
     - groovy-victoria
