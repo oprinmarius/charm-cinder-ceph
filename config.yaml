@@ -4,7 +4,7 @@ options:
     type: int
     description: |
       This value dictates the number of replicas ceph must make of any
-      object it stores withing the cinder rbd pool. Of course, this only
+      object it stores within the cinder rbd pool. Of course, this only
       applies if using Ceph as a backend store. Note that once the cinder
       rbd pool has been created, changing this value will not have any
       effect (although it can be changed in ceph by manually configuring
