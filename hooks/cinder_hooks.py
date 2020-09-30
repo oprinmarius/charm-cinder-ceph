@@ -49,6 +49,7 @@ from charmhelpers.contrib.storage.linux.ceph import (
     delete_keyring,
     ensure_ceph_keyring,
     is_request_complete,
+    send_application_name,
     send_request_if_needed,
 )
 from charmhelpers.core.hookenv import (
@@ -105,6 +106,7 @@ def install():
 def ceph_joined():
     if not os.path.isdir('/etc/ceph'):
         os.mkdir('/etc/ceph')
+    send_application_name()
 
 
 def get_ceph_request():
