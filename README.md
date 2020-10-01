@@ -32,15 +32,15 @@ on configuring applications.
 
 #### `pool-type`
 
-The `pool-type` option dictates the storage pool type. See section 'Pool type'
-for more information.
+The `pool-type` option dictates the storage pool type. See section 'Ceph pool
+type' for more information.
 
 #### `rbd-pool-name`
 
 The `rbd-pool-name` option sets an existing rbd pool that Cinder should map
 to.
 
-## Pool type
+## Ceph pool type
 
 Ceph storage pools can be configured to ensure data resiliency either through
 replication or by erasure coding. This charm supports both types via the
