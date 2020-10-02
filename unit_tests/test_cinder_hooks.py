@@ -58,6 +58,7 @@ TO_PATCH = [
     'remove_alternative',
     'status_set',
     'os_application_version_set',
+    'send_application_name',
 ]
 
 
@@ -81,6 +82,7 @@ class TestCinderHooks(CharmTestCase):
             isdir.return_value = False
             hooks.hooks.execute(['hooks/ceph-relation-joined'])
             mkdir.assert_called_with('/etc/ceph')
+            self.send_application_name.assert_called_with()
 
     @patch('charmhelpers.core.hookenv.config')
     def test_ceph_changed_no_key(self, mock_config):
