@@ -406,11 +406,16 @@ class TestCinderHooks(CharmTestCase):
         self.leader_get.assert_called_once_with('secret-uuid')
         self.leader_set.assert_called_once_with({'secret-uuid': '42'})
 
+    @patch.object(hooks, 'get_ceph_request')
+    @patch.object(hooks, 'is_request_complete')
     @patch.object(hooks, 'CephBlueStoreCompressionContext')
     @patch.object(hooks, 'set_os_workload_status')
     def test_assess_status(self,
                            mock_set_os_workload_status,
-                           mock_bluestore_compression):
+                           mock_bluestore_compression,
+                           is_request_complete,
+                           get_ceph_request):
+        is_request_complete.return_value = True
         hooks.assess_status()
         self.os_application_version_set.assert_called_once_with(
             hooks.VERSION_PACKAGE)
@@ -418,7 +423,15 @@ class TestCinderHooks(CharmTestCase):
             ANY, hooks.REQUIRED_INTERFACES)
         mock_bluestore_compression().validate.assert_called_once_with()
         self.assertFalse(self.status_set.called)
+        # confirm incomplete request is caught
+        self.status_set.reset_mock()
+        is_request_complete.return_value = False
+        hooks.assess_status()
+        self.status_set.assert_called_once_with(
+            'waiting', 'Ceph broker request incomplete')
         # confirm operation when user have provided invalid configuration
+        is_request_complete.return_value = True
+        self.status_set.reset_mock()
         mock_bluestore_compression().validate.side_effect = ValueError(
             'fake message')
         hooks.assess_status()

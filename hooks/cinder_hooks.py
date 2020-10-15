@@ -371,6 +371,9 @@ def assess_status():
         bluestore_compression.validate()
     except ValueError as e:
         status_set('blocked', 'Invalid configuration: {}'.format(str(e)))
+        return
+    if not is_request_complete(get_ceph_request()):
+        status_set('waiting', 'Ceph broker request incomplete')
 
 
 if __name__ == '__main__':
