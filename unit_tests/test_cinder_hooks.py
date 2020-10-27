@@ -141,14 +141,16 @@ class TestCinderHooks(CharmTestCase):
         hooks.get_ceph_request()
         mock_create_pool.assert_called_with(name='cinder', replica_count=4,
                                             weight=20, group='volumes',
-                                            app_name='rbd')
+                                            app_name='rbd',
+                                            rbd_mirroring_mode='pool')
         mock_request_access.assert_not_called()
 
         self.test_config.set('restrict-ceph-pools', True)
         hooks.get_ceph_request()
         mock_create_pool.assert_called_with(name='cinder', replica_count=4,
                                             weight=20, group='volumes',
-                                            app_name='rbd')
+                                            app_name='rbd',
+                                            rbd_mirroring_mode='pool')
         mock_request_access.assert_has_calls([
             call(
                 name='volumes',
@@ -181,7 +183,8 @@ class TestCinderHooks(CharmTestCase):
                                             replica_count=4,
                                             weight=20,
                                             group='volumes',
-                                            app_name='rbd')
+                                            app_name='rbd',
+                                            rbd_mirroring_mode='pool')
         # confirm operation with bluestore compression
         mock_create_pool.reset_mock()
         mock_bluestore_compression().get_kwargs.return_value = {
@@ -193,6 +196,7 @@ class TestCinderHooks(CharmTestCase):
                                                  weight=20,
                                                  group='volumes',
                                                  app_name='rbd',
+                                                 rbd_mirroring_mode='pool',
                                                  compression_mode='fake')
 
     @patch.object(hooks, 'CephBlueStoreCompressionContext')

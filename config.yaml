@@ -53,6 +53,13 @@ options:
     description: |
       Flatten volumes created from snapshots to remove dependency from
       volume to snapshot. Supported on Queens+
+  rbd-mirroring-mode:
+    type: string
+    default: pool
+    description: |
+      The RBD mirroring mode used for the Ceph pool. This option is only used
+      with 'replicated' pool type, as it's not supported for 'erasure-coded'
+      pool type - valid values: 'pool' and 'image'
   pool-type:
     type: string
     default: replicated
