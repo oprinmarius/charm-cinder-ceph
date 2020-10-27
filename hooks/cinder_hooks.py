@@ -193,6 +193,7 @@ def get_ceph_request():
             'weight': weight,
             'group': 'volumes',
             'app_name': 'rbd',
+            'rbd_mirroring_mode': config('rbd-mirroring-mode')
         }
         kwargs.update(bluestore_compression.get_kwargs())
         rq.add_op_create_replicated_pool(**kwargs)
