@@ -26,6 +26,7 @@ from charmhelpers.contrib.openstack.utils import get_os_codename_package
 from charmhelpers.core.hookenv import (
     hook_name,
     relation_ids,
+    application_name,
     service_name,
 )
 from charmhelpers.core.host import mkdir
@@ -56,6 +57,11 @@ CONFIG_FILES = {}
 
 def ceph_config_file():
     return CHARM_CEPH_CONF.format(service_name())
+
+
+def ceph_replication_device_config_file():
+    return CHARM_CEPH_CONF.format(
+        '{}-replication-device'.format(application_name()))
 
 
 def register_configs():
@@ -92,6 +98,20 @@ def register_configs():
             'services': ['cinder-volume'],
         }
         confs.append(ceph_config_file())
+
+    relation_present = relation_ids('ceph-replication-device') and \
+        hook_name() != 'ceph-replication-device-relation-broken'
+    if relation_present:
+        mkdir(os.path.dirname(ceph_replication_device_config_file()))
+
+        if not os.path.exists(ceph_replication_device_config_file()):
+            open(ceph_replication_device_config_file(), 'wt').close()
+
+        CONFIG_FILES[ceph_replication_device_config_file()] = {
+            'hook_contexts': [context.CephContext('ceph-replication-device')],
+            'services': ['cinder-volume'],
+        }
+        confs.append(ceph_replication_device_config_file())
 
     for conf in confs:
         configs.register(conf, CONFIG_FILES[conf]['hook_contexts'])
