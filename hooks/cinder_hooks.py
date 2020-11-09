@@ -274,6 +274,8 @@ def ceph_replication_device_changed():
 
     CONFIGS.write_all()
 
+    for r_id in relation_ids('ceph-replication-device-access'):
+        ceph_replication_device_access_relation(r_id)
     for rid in relation_ids('storage-backend'):
         storage_backend(rid)
 
@@ -299,6 +301,8 @@ def write_and_restart():
     # NOTE(jamespage): seed uuid for use on compute nodes with libvirt
     if not leader_get('secret-uuid') and is_leader():
         leader_set({'secret-uuid': str(uuid.uuid4())})
+    if not leader_get('replication-device-secret-uuid') and is_leader():
+        leader_set({'replication-device-secret-uuid': str(uuid.uuid4())})
 
     # NOTE(jamespage): trigger any configuration related changes
     #                  for cephx permissions restrictions
@@ -318,7 +322,8 @@ def storage_backend(rel_id=None):
         replication_device = {
             'backend_id': 'ceph',
             'conf': ceph_replication_device_config_file(),
-            'user': '{}-replication-device'.format(application_name())
+            'user': '{}-replication-device'.format(application_name()),
+            'secret_uuid': leader_get('replication-device-secret-uuid')
         }
         replication_device_str = ','.join(
             ['{}:{}'.format(k, v) for k, v in replication_device.items()])
@@ -358,6 +363,8 @@ def leader_settings_changed():
     #                  re-exec relations that use this data.
     for r_id in relation_ids('ceph-access'):
         ceph_access_joined(r_id)
+    for r_id in relation_ids('ceph-replication-device-access'):
+        ceph_replication_device_access_relation(r_id)
     for r_id in relation_ids('storage-backend'):
         storage_backend(r_id)
 
@@ -384,6 +391,34 @@ def ceph_access_joined(relation_id=None):
         relation_id=relation_id,
         relation_settings={'key': ceph_keys.get('key'),
                            'secret-uuid': leader_get('secret-uuid')}
+    )
+
+
+@hooks.hook('ceph-replication-device-access-relation-joined',
+            'ceph-replication-device-access-relation-changed')
+def ceph_replication_device_access_relation(relation_id=None):
+    if 'ceph-replication-device' not in CONFIGS.complete_contexts():
+        log('Deferring key provision until ceph-replication-device '
+            'relation is complete')
+        return
+
+    secret_uuid = leader_get('replication-device-secret-uuid')
+    if not secret_uuid:
+        if is_leader():
+            leader_set({'replication-device-secret-uuid': str(uuid.uuid4())})
+        else:
+            log('Deferring key provision until leader seeds libvirt uuid')
+            return
+
+    ceph_keys = CephContext('ceph-replication-device')()
+
+    app_name = '{}-replication-device'.format(application_name())
+    relation_set(
+        relation_id=relation_id,
+        relation_settings={
+            'service-name': app_name,
+            'key': ceph_keys.get('key'),
+            'secret-uuid': leader_get('replication-device-secret-uuid')}
     )
 
 
