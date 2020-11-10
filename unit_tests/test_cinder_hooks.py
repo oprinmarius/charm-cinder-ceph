@@ -356,7 +356,8 @@ class TestCinderHooks(CharmTestCase):
         replication_device = {
             'backend_id': 'ceph',
             'conf': self.ceph_replication_device_config_file(),
-            'user': '{}-replication-device'.format(self.application_name())
+            'user': '{}-replication-device'.format(self.application_name()),
+            'secret_uuid': self.leader_get('replication-device-secret-uuid')
         }
         replication_device_str = ','.join(
             ['{}:{}'.format(k, v) for k, v in replication_device.items()])
@@ -370,15 +371,44 @@ class TestCinderHooks(CharmTestCase):
             stateless=True,
         )
 
-    @patch.object(hooks, 'ceph_access_joined')
     @patch.object(hooks, 'storage_backend')
+    @patch.object(hooks, 'ceph_replication_device_access_relation')
+    @patch.object(hooks, 'ceph_access_joined')
     def test_leader_settings_changed(self,
-                                     storage_backend,
-                                     ceph_access_joined):
-        self.relation_ids.side_effect = [['ceph-access:1'],
-                                         ['storage-backend:23']]
+                                     ceph_access_joined,
+                                     ceph_replication_device_access_relation,
+                                     storage_backend):
+
+        class FakeRelationIds(object):
+            def __init__(self, relation_list):
+                self.relations = {}
+                self.relation_list = relation_list
+                for relation in relation_list:
+                    k, v = relation[0].split(':')
+                    self.relations[k] = v
+                self._index = 0
+
+            def __call__(self, relation):
+                rel_id = self.relations.get(relation)
+                if rel_id:
+                    return ['{}:{}'.format(relation, rel_id)]
+
+            def __next__(self):
+                ''''Returns the next value from relation_list'''
+                if self._index < len(self.relation_list):
+                    result = self.relation_list[self._index]
+                    self._index += 1
+                    return result
+                raise StopIteration
+
+        relations = [['ceph-access:1'],
+                     ['storage-backend:23'],
+                     ['ceph-replication-device-access:45']]
+        self.relation_ids.side_effect = FakeRelationIds(relations)
         hooks.leader_settings_changed()
         ceph_access_joined.assert_called_with('ceph-access:1')
+        ceph_replication_device_access_relation.assert_called_with(
+            'ceph-replication-device-access:45')
         storage_backend.assert_called_with('storage-backend:23')
 
     @patch.object(hooks, 'CONFIGS')
@@ -450,8 +480,9 @@ class TestCinderHooks(CharmTestCase):
         self.is_leader.return_value = True
         mock_uuid4.return_value = 42
         hooks.write_and_restart()
-        self.leader_get.assert_called_once_with('secret-uuid')
-        self.leader_set.assert_called_once_with({'secret-uuid': '42'})
+        self.leader_set.assert_has_calls([
+            call({'secret-uuid': '42'}),
+            call({'replication-device-secret-uuid': '42'})])
 
     @patch.object(hooks, 'CephBlueStoreCompressionContext')
     @patch.object(hooks, 'set_os_workload_status')
@@ -472,15 +503,47 @@ class TestCinderHooks(CharmTestCase):
         self.status_set.assert_called_once_with(
             'blocked', 'Invalid configuration: fake message')
 
-    @patch('charmhelpers.core.hookenv.config')
     @patch.object(hooks, 'storage_backend')
+    @patch('charmhelpers.core.hookenv.config')
+    @patch.object(hooks, 'ceph_replication_device_access_relation')
+    @patch.object(hooks, 'CephContext')
     def test_ceph_replication_device_changed(self,
-                                             storage_backend,
-                                             mock_config):
+                                             CephContext,
+                                             ceph_rd_access_relation,
+                                             mock_config,
+                                             storage_backend):
         self.CONFIGS.complete_contexts.return_value = [
             'ceph-replication-device']
         self.ensure_ceph_keyring.return_value = True
-        self.relation_ids.return_value = ['storage-backend:1']
+
+        class FakeRelationIds(object):
+            def __init__(self, relation_list):
+                self.relations = {}
+                self.relation_list = relation_list
+                for relation in relation_list:
+                    k, v = relation[0].split(':')
+                    self.relations[k] = v
+                self._index = 0
+
+            def __call__(self, relation):
+                rel_id = self.relations.get(relation)
+                if rel_id:
+                    return ['{}:{}'.format(relation, rel_id)]
+
+            def __next__(self):
+                ''''Returns the next value from relation_list'''
+                if self._index < len(self.relation_list):
+                    result = self.relation_list[self._index]
+                    self._index += 1
+                    return result
+                raise StopIteration
+
+        relations = [['storage-backend:1'],
+                     ['ceph-replication-device-access:23']]
+        self.relation_ids.side_effect = FakeRelationIds(relations)
+        context = MagicMock()
+        context.return_value = {'key': 'mykey'}
+        CephContext.return_value = context
         app_name = '{}-replication-device'.format(self.application_name())
         hooks.hooks.execute(['hooks/ceph-replication-device-relation-changed'])
         self.ensure_ceph_keyring.assert_called_with(
@@ -489,6 +552,8 @@ class TestCinderHooks(CharmTestCase):
             user='cinder',
             group='cinder')
         self.assertTrue(self.CONFIGS.write_all.called)
+        ceph_rd_access_relation.assert_called_with(
+            'ceph-replication-device-access:23')
         storage_backend.assert_called_with('storage-backend:1')
 
     @patch('charmhelpers.core.hookenv.config')
@@ -506,3 +571,54 @@ class TestCinderHooks(CharmTestCase):
             self.application_name())}
         hooks.hooks.execute(['hooks/ceph-replication-device-relation-joined'])
         self.relation_set.assert_called_with(relation_settings=data)
+
+    @patch.object(hooks, 'CephContext')
+    @patch.object(hooks, 'CONFIGS')
+    def test_ceph_replication_device_access_relation(self,
+                                                     CONFIGS,
+                                                     CephContext):
+        CONFIGS.complete_contexts.return_value = ['ceph-replication-device']
+
+        class FakeRelationIds(object):
+            def __init__(self, relation_list):
+                self.relations = {}
+                self.relation_list = relation_list
+                for relation in relation_list:
+                    k, v = relation[0].split(':')
+                    self.relations[k] = v
+                self._index = 0
+
+            def __call__(self, relation):
+                rel_id = self.relations.get(relation)
+                if rel_id:
+                    return ['{}:{}'.format(relation, rel_id)]
+
+            def __next__(self):
+                ''''Returns the next value from relation_list'''
+                if self._index < len(self.relation_list):
+                    result = self.relation_list[self._index]
+                    self._index += 1
+                    return result
+                raise StopIteration
+
+        relations = [['storage-backend:1'],
+                     ['ceph-replication-device:23'],
+                     ['ceph-replication-device-access:45']]
+
+        self.relation_ids.side_effect = FakeRelationIds(relations)
+
+        self.is_leader.return_value = True
+        service_name = '{}-replication-device'.format(self.application_name())
+        self.leader_get.side_effect = [None, 'secret-uuid']
+        context = MagicMock()
+        context.return_value = {'key': 'mykey'}
+        CephContext.return_value = context
+        hooks.hooks.execute(
+            ['hooks/ceph-replication-device-access-relation-changed'])
+        self.relation_set.assert_called_with(
+            relation_id=None,
+            relation_settings={
+                'service-name': service_name,
+                'key': 'mykey',
+                'secret-uuid': 'secret-uuid'}
+        )
