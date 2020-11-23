@@ -24,6 +24,7 @@ TO_PATCH = [
     'service_name',
     'get_os_codename_package',
     'leader_get',
+    'relation_get',
     'relation_ids',
     'related_units',
 ]
@@ -240,4 +241,27 @@ class TestCinderContext(CharmTestCase):
         self.assertEqual(
             contexts.CephAccessContext()(),
             {'complete': True}
+        )
+
+    def test_ceph_replication_device(self):
+        '''Test ceph context with ceph-replication-device relation'''
+        self.relation_get.side_effect = ['foo', 'bar']
+        self.relation_ids.return_value = ['ceph-replication-device:1']
+        self.related_units.return_value = ['ceph-mon/0', 'ceph-mon/1']
+        ctxt = contexts.CephReplicationDeviceContext()
+        ctxt_dict = ctxt()
+        self.assertEqual(
+            ctxt.context_complete(ctxt_dict),
+            True
+        )
+        self.assertEqual(
+            ctxt_dict,
+            {
+                'auth': 'foo',
+                'key': 'bar'
+            }
+        )
+        self.assertEquals(
+            contexts.CephReplicationDeviceContext.interfaces,
+            ['ceph-replication-device']
         )

@@ -17,11 +17,13 @@ from charmhelpers.core.hookenv import (
     service_name,
     is_relation_made,
     leader_get,
+    relation_get,
     relation_ids,
     related_units,
 )
 
 from charmhelpers.contrib.openstack.context import (
+    CephContext,
     OSContextGenerator,
 )
 
@@ -99,3 +101,37 @@ class CephSubordinateContext(OSContextGenerator):
                  config('rbd-flatten-volume-from-snapshot')))
 
         return {'cinder': {'/etc/cinder/cinder.conf': {'sections': section}}}
+
+
+class CephReplicationDeviceContext(CephContext):
+    """Generates context for /etc/ceph/ceph.conf templates."""
+
+    interfaces = ['ceph-replication-device']
+
+    def __call__(self):
+        if not relation_ids('ceph-replication-device'):
+            return {}
+
+        ctxt = {}
+        for rid in relation_ids('ceph-replication-device'):
+            for unit in related_units(rid):
+                if not ctxt.get('auth'):
+                    ctxt['auth'] = relation_get('auth', rid=rid, unit=unit)
+                if not ctxt.get('key'):
+                    ctxt['key'] = relation_get('key', rid=rid, unit=unit)
+
+        if not self.context_complete(ctxt):
+            return {}
+
+        return ctxt
+
+
+class CinderCephContext(CephContext):
+
+    def __call__(self):
+        ctxt = super(CinderCephContext, self).__call__()
+        # NOTE: If "rbd-mirroring-mode" is set to "image" we are going
+        # to ignore default 'rbd_features' that are set in the context
+        if config('rbd-mirror-mode') == "image":
+            ctxt.pop('rbd_features', None)
+        return ctxt
